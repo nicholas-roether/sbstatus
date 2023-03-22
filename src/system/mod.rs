@@ -1,3 +1,3 @@
+pub mod devices;
 pub mod player;
-pub mod sysfs;
 pub struct SystemDataCollector {}

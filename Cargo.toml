@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 alsa = "0.7.0"
 mpris = "2.0.0"
+udev = "0.7.0"

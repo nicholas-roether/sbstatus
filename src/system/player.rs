@@ -28,12 +28,13 @@ impl PlayerDataCollector {
         })
     }
 
-    pub fn refresh(&mut self) {
+    fn refresh(&mut self) {
         self.refresh_active_player();
         self.refresh_player_data();
     }
 
-    pub fn player_data(&self) -> &'_ Option<PlayerData> {
+    pub fn poll_player_data(&mut self) -> &'_ Option<PlayerData> {
+        self.refresh();
         &self.player_data
     }
 
