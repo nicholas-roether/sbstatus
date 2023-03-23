@@ -6,4 +6,7 @@ edition = "2021"
 [dependencies]
 alsa = "0.7.0"
 mpris = "2.0.0"
+serde = { version = "1.0.158", features = ["derive"] }
+toml = "0.7.3"
 udev = "0.7.0"
+
