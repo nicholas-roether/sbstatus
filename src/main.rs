@@ -12,7 +12,7 @@ mod config;
 
 fn main() {
     let mut psupp_scanner = PowerSupplyScanner::new();
-    let battery = psupp_scanner.get_first_battery();
+    let battery = psupp_scanner.find_battery(None);
 
     println!("{:?}", battery)
 }

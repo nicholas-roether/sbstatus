@@ -1,6 +1,6 @@
-use crate::attribute_getter;
+use std::borrow::Cow;
 
-use super::{DeviceScanner, DeviceWrapper};
+use super::{Device, DeviceScanner};
 
 pub struct PowerSupplyScanner {
     device_scanner: DeviceScanner,
@@ -9,52 +9,56 @@ pub struct PowerSupplyScanner {
 impl PowerSupplyScanner {
     pub fn new() -> Self {
         Self {
-            device_scanner: DeviceScanner::new("powersource"),
+            device_scanner: DeviceScanner::new("power_source"),
         }
     }
 
-    pub fn get_first_battery(&mut self) -> Option<Battery> {
-        self.iter_bateries().next()
-    }
-
-    pub fn get_battery(&mut self, name: &str) -> Option<Battery> {
-        self.iter_bateries().find(|bat| bat.name() == name)
-    }
-
-    fn iter_bateries(&mut self) -> impl Iterator<Item = Battery> + '_ {
-        self.device_scanner
-            .get_devices()
-            .into_iter()
-            .filter_map(|dev| {
-                let Some(device_type) = dev.attribute_value("type") else {
-                    return None;
-                };
-                (device_type.to_string_lossy() == "Battery").then(|| Battery::new(dev))
-            })
+    pub fn find_battery(&mut self, name: Option<&str>) -> Option<Battery> {
+        for device in self.device_scanner.get_devices() {
+            if device.device_type() != "Battery" {
+                continue;
+            }
+            if let Some(name) = name {
+                if device.device_name() != name {
+                    continue;
+                }
+            }
+            return Some(Battery::new(device));
+        }
+        None
     }
 }
 
 #[derive(Debug)]
 pub struct Battery {
-    device: udev::Device,
+    device: Device,
 }
 
 impl Battery {
-    fn new(device: udev::Device) -> Self {
+    fn new(device: Device) -> Self {
         Self { device }
     }
 
-    attribute_getter!(capacity, u32);
-
-    attribute_getter!(status, String);
-
-    pub fn is_charging(&self) -> Option<bool> {
-        self.status().map(|status| status == *"Charging")
+    pub fn capacity(&self) -> u8 {
+        self.device
+            .attr("capacity")
+            .expect("Battery doesn't specify capacity")
+            .parse()
+            .expect("Battery capacity had unexpected value")
     }
 }
 
-impl DeviceWrapper for Battery {
-    fn device(&self) -> &udev::Device {
-        &self.device
+#[derive(Debug)]
+pub struct Mains {
+    device: Device,
+}
+
+impl Mains {
+    fn new(device: Device) -> Self {
+        Self { device }
+    }
+
+    pub fn is_online(&self) -> bool {
+        self.device.attr("online") == Some(Cow::Borrowed("1"))
     }
 }

@@ -1,18 +1,6 @@
-use std::{ffi::OsStr, path::Path};
+use std::borrow::Cow;
 
 pub mod power_supply;
-
-#[macro_export]
-macro_rules! attribute_getter {
-    ($name:ident, $ty:ty) => {
-        pub fn $name(&self) -> Option<$ty> {
-            let Some(os_str) = $crate::system::devices::DeviceWrapper::device(self).attribute_value(stringify!($ident)) else {
-                                                                                        return None;
-                                                                                    };
-            os_str.to_string_lossy().parse().ok()
-        }
-    };
-}
 
 pub struct DeviceScanner {
     enumerator: udev::Enumerator,
@@ -27,23 +15,50 @@ impl DeviceScanner {
         Self { enumerator }
     }
 
-    pub fn get_devices(&mut self) -> Vec<udev::Device> {
+    pub fn get_devices(&mut self) -> Vec<Device> {
         self.enumerator
             .scan_devices()
             .expect("Failed to scan for udev devices")
+            .map(Into::into)
             .collect()
     }
 }
 
-pub trait DeviceWrapper {
-    fn device(&self) -> &udev::Device;
+#[derive(Debug)]
+pub struct Device {
+    device: udev::Device,
+}
 
-    fn name(&self) -> String {
-        self.device()
+impl Device {
+    fn new(device: udev::Device) -> Self {
+        Self { device }
+    }
+
+    pub fn device_type(&self) -> Cow<str> {
+        dbg!(&self.device);
+        self.device
+            .devtype()
+            .expect("udev device doesn't specify a type")
+            .to_string_lossy()
+    }
+
+    pub fn device_name(&self) -> Cow<str> {
+        self.device
             .devnode()
-            .map(Path::as_os_str)
-            .map(OsStr::to_string_lossy)
-            .expect("Unexpected unnamed device")
-            .into_owned()
+            .expect("udev device has no path associated")
+            .to_string_lossy()
+    }
+
+    pub fn attr(&self, name: &str) -> Option<Cow<str>> {
+        let Some(val_osstr) = self.device.attribute_value(name) else {
+            return None;
+        };
+        Some(val_osstr.to_string_lossy())
+    }
+}
+
+impl From<udev::Device> for Device {
+    fn from(value: udev::Device) -> Self {
+        Self::new(value)
     }
 }
