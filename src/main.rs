@@ -1,8 +1,4 @@
-use std::{thread, time::Duration};
-
-use system::player::PlayerDataCollector;
-
-use crate::system::devices::power_supply::PowerSupplyScanner;
+use crate::system::devices::power_supply::get_power_supplies;
 
 mod system;
 
@@ -11,8 +7,7 @@ mod modules;
 mod config;
 
 fn main() {
-    let mut psupp_scanner = PowerSupplyScanner::new();
-    let battery = psupp_scanner.find_battery(None);
+    let psupps = get_power_supplies();
 
-    println!("{:?}", battery)
+    println!("{:?}", psupps)
 }

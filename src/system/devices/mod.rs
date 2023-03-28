@@ -1,5 +1,7 @@
 use std::borrow::Cow;
 
+use anyhow::{Context, Result};
+
 pub mod power_supply;
 
 pub struct DeviceScanner {
@@ -7,12 +9,15 @@ pub struct DeviceScanner {
 }
 
 impl DeviceScanner {
-    pub fn new(subsystem: &str) -> Self {
-        let mut enumerator = udev::Enumerator::new().expect("Failed to create udev enumerator");
-        enumerator
+    pub fn new() -> Result<Self> {
+        let mut enumerator = udev::Enumerator::new().context("Failed to create udev enumerator")?;
+        Ok(Self { enumerator })
+    }
+
+    pub fn filter_subsystem(&mut self, subsystem: &str) -> Result<()> {
+        self.enumerator
             .match_subsystem(subsystem)
-            .expect("Failed to apply udev enumerator subsystem filter");
-        Self { enumerator }
+            .context("Invalid subsystem provided")
     }
 
     pub fn get_devices(&mut self) -> Vec<Device> {
@@ -32,21 +37,6 @@ pub struct Device {
 impl Device {
     fn new(device: udev::Device) -> Self {
         Self { device }
-    }
-
-    pub fn device_type(&self) -> Cow<str> {
-        dbg!(&self.device);
-        self.device
-            .devtype()
-            .expect("udev device doesn't specify a type")
-            .to_string_lossy()
-    }
-
-    pub fn device_name(&self) -> Cow<str> {
-        self.device
-            .devnode()
-            .expect("udev device has no path associated")
-            .to_string_lossy()
     }
 
     pub fn attr(&self, name: &str) -> Option<Cow<str>> {

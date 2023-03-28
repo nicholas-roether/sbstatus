@@ -1,33 +1,8 @@
 use std::borrow::Cow;
 
+use anyhow::Result;
+
 use super::{Device, DeviceScanner};
-
-pub struct PowerSupplyScanner {
-    device_scanner: DeviceScanner,
-}
-
-impl PowerSupplyScanner {
-    pub fn new() -> Self {
-        Self {
-            device_scanner: DeviceScanner::new("power_source"),
-        }
-    }
-
-    pub fn find_battery(&mut self, name: Option<&str>) -> Option<Battery> {
-        for device in self.device_scanner.get_devices() {
-            if device.device_type() != "Battery" {
-                continue;
-            }
-            if let Some(name) = name {
-                if device.device_name() != name {
-                    continue;
-                }
-            }
-            return Some(Battery::new(device));
-        }
-        None
-    }
-}
 
 #[derive(Debug)]
 pub struct Battery {
@@ -61,4 +36,30 @@ impl Mains {
     pub fn is_online(&self) -> bool {
         self.device.attr("online") == Some(Cow::Borrowed("1"))
     }
+}
+
+#[derive(Debug, Default)]
+pub struct PowerSupplies {
+    pub battery: Option<Battery>,
+    pub mains: Option<Mains>,
+}
+
+pub fn get_power_supplies() -> Result<PowerSupplies> {
+    let mut psupps = PowerSupplies::default();
+    let mut dev_scanner = DeviceScanner::new()?;
+    dev_scanner.filter_subsystem("power_supply")?;
+
+    for device in dev_scanner.get_devices() {
+        match device.attr("type").as_deref() {
+            Some("Battery") => {
+                psupps.battery.get_or_insert(Battery::new(device));
+            }
+            Some("Mains") => {
+                psupps.mains.get_or_insert(Mains::new(device));
+            }
+            _ => (),
+        }
+    }
+
+    Ok(psupps)
 }
